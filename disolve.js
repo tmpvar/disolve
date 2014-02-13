@@ -5,7 +5,11 @@ var defined = function(a) {
 
 var string = function(a) {
   return Object.prototype.toString.call(a) === '[object String]';
-}
+};
+
+var number = function(a) {
+  return Object.prototype.toString.call(a) === '[object Number]';
+};
 
 function Expression(left, operator, right) {
 
@@ -37,9 +41,9 @@ Expression.prototype.name = 'expression';
 
 Expression.prototype.toString = function(addParens) {
   return [
-    this.left.toString(leftp),
+    this.left.toString(),
     this.operator.toString(),
-    this.right.toString(rightp),
+    this.right.toString(),
   ].join('');
 };
 
@@ -112,8 +116,16 @@ function ExpressionFunction(fn, expression) {
   this.expression = expression;
 }
 
-ExpressionFunction.prototype.evaluate = function() {
+ExpressionFunction.prototype.evaluate = function(knowns) {
+  var fn = Math[this.fn] || this[this.fn];
 
+  if (Expression.isExpression(this.expression)) {
+    return fn(this.expression.evaluate(knowns));
+  } else if (string(this.expression) && knowns[this.expression]) {
+    return fn(knowns[this.expression]);
+  } else if (number(this.expression)) {
+    return fn(this.expression);
+  }
 };
 
 ExpressionFunction.prototype.toString = function() {
