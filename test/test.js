@@ -178,8 +178,6 @@ describe('ExpressionGroup', function() {
       eq(e.toString(), e2.toString())
     });
   });
-
-
 });
 
 describe('ExpresionFor', function() {
@@ -229,18 +227,75 @@ describe('ExpresionFor', function() {
       eq(line.evaluate(knowns), 10);
       eq(knowns.y, 10);
     });
+  });
+});
 
-    it('reduces if not all params are known', function() {
-      var line = ExpressionFor('y',
+
+describe('unknown calculation', function() {
+  it('returns an array of unknowns (Expression)', function() {
+    var e = ExpressionFunction('sqrt',
+      Expression(
+        Expression('a', '^', 2),
+        '+',
         Expression(
-          Expression('m', '*', 'x'), '+', 'b'
+          Expression('b', '^', 2),
+          '+',
+          Expression('c', '^', 2)
         )
-      );
+      )
+    );
 
-      // var e =  line.evaluate({
-      //   m : 1,
-      //   b : 0
-      // };
-    });
+    var knowns = {
+      a: 2,
+      b: 3
+    };
+
+    eq(e.unknowns(knowns).join(','), 'c');
+  });
+});
+
+describe('partial evaluation', function() {
+
+  it('returns a new expression (simple)', function() {
+    var e = Expression('a','+', 'b');
+
+    var knowns = {
+      a: 2
+    };
+
+    eq(e.evaluate({ a: 2 }).toString(), '2 + b');
+    eq(e.evaluate({ b: 2 }).toString(), 'a + 2');
+  });
+
+  it('returns a new expression (nested / right)', function() {
+    var e = Expression('a','+', ExpressionGroup('a', '/', 'b'));
+
+    var knowns = {
+      a: 2
+    };
+
+    var e2 = e.evaluate({ a: 2 });
+    eq(e2.toString(), '2 + (2 / b)');
+    eq(e2.evaluate({ b: 4 }), 2.5);
+  });
+
+  it('returns a new expression (nested / left)', function() {
+    var e = Expression(ExpressionGroup('a', '/', 'b'), '+', 'a');
+
+    var knowns = {
+      a: 2
+    };
+
+    eq(e.evaluate({ a: 2 }).toString(), '(2 / b) + 2');
+  });
+
+  it('returns a new expression (nested / both)', function() {
+    var e = Expression(ExpressionGroup('a', '*', 'b'), '/', ExpressionGroup('a', '-', 'b'));
+
+    var knowns = {
+      a: 2
+    };
+
+    eq(e.evaluate({ a: 2 }).toString(), '(2b) / (2 - b)');
   });
 });

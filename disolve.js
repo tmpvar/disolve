@@ -61,15 +61,19 @@ Expression.prototype.evaluate = function(knowns) {
     }
   }
 
-  if (right instanceof Expression) {
+  if (Expression.isExpression(right)) {
     right = right.evaluate(knowns);
   }
 
-  if (left instanceof Expression) {
+  if (Expression.isExpression(left)) {
     left = left.evaluate(knowns);
   }
 
-  return this.operator.perform(left, right)
+  if (this.unknowns(knowns).length) {
+    return new (this.constructor)(left, this.operator.type, right);
+  } else {
+    return this.operator.perform(left, right);
+  }
 };
 
 Expression.prototype.clone = function() {
@@ -79,6 +83,23 @@ Expression.prototype.clone = function() {
 
   return new (this.constructor)(left, op, right);
 };
+
+Expression.prototype.unknowns = function(knowns, unknowns) {
+  unknowns = unknowns || [];
+  if (string(this.left) && !defined(knowns[this.left])) {
+    unknowns.push(this.left);
+  } else if (Expression.isExpression(this.left)) {
+    this.left.unknowns(knowns, unknowns);
+  }
+
+  if (string(this.right) && !defined(knowns[this.right])) {
+    unknowns.push(this.right);
+  } else if (Expression.isExpression(this.right)) {
+    this.right.unknowns(knowns, unknowns);
+  }
+
+  return unknowns;
+}
 
 function ExpressionFor(variable, expression) {
 
@@ -117,7 +138,6 @@ ExpressionGroup.prototype.toString = function() {
   return '(' + Expression.prototype.toString.call(this) + ')';
 };
 
-
 function ExpressionFunction(fn, expression) {
   if (!(this instanceof ExpressionFunction)) {
     return new ExpressionFunction(fn, expression);
@@ -136,6 +156,12 @@ ExpressionFunction.prototype.evaluate = function(knowns) {
     return fn(knowns[this.expression]);
   } else if (number(this.expression)) {
     return fn(this.expression);
+  }
+};
+
+ExpressionFunction.prototype.unknowns = function(knowns, unknowns) {
+  if (Expression.isExpression(this.expression)) {
+    return this.expression.unknowns(knowns, unknowns);
   }
 };
 
