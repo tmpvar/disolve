@@ -72,6 +72,14 @@ Expression.prototype.evaluate = function(knowns) {
   return this.operator.perform(left, right)
 };
 
+Expression.prototype.clone = function() {
+  var left = (Expression.isExpression(this.left)) ? this.left.clone() : this.left;
+  var right = (Expression.isExpression(this.right)) ? this.right.clone() : this.right;
+  var op = this.operator.type;
+
+  return new (this.constructor)(left, op, right);
+};
+
 function ExpressionFor(variable, expression) {
 
   if (!(this instanceof ExpressionFor)) {
@@ -87,6 +95,10 @@ ExpressionFor.prototype.evaluate = function(knowns) {
   return knowns[this.variable];
 };
 
+ExpressionFor.prototype.clone = function() {
+  return new ExpressionFor(this.variable, this.expression.clone());
+};
+
 ExpressionFor.prototype.toString = function() {
   return this.variable + ' = ' + this.expression.toString();
 };
@@ -99,7 +111,6 @@ function ExpressionGroup(left, op, right) {
 }
 
 ExpressionGroup.prototype = Object.create(Expression.prototype);
-
 ExpressionGroup.prototype.constructor = ExpressionGroup;
 
 ExpressionGroup.prototype.toString = function() {
@@ -179,13 +190,6 @@ Operator.prototype.toString = function() {
   }
   return type;
 };
-
-
-
-function Value(val) {
-
-}
-
 
 var disolve = function(val) {
   // TODO: parse incoming string into expression tree

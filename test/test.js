@@ -157,9 +157,29 @@ describe('ExpressionGroup', function() {
       );
 
       eq(e.toString(), 'sqrt((a^2 / 10) + c^2)')
-
     });
   });
+
+  describe('#clone', function() {
+    it('returns a deep copy of the expression tree', function() {
+      var e = Expression(ExpressionGroup('y', '+', 'm'), '/', ExpressionGroup('y', '/', 2));
+      var e2 = e.clone();
+
+      ok(e2 !== e);
+      ok(e.right !== e2.right);
+      ok(e.left !== e2.left);
+      eq(e2.left.left, 'y');
+      eq(e2.left.right, 'm');
+      eq(e2.right.left, 'y');
+      eq(e2.right.right, 2);
+      eq(e2.operator.type, '/');
+      eq(e2.left.operator.type, '+');
+      eq(e2.right.operator.type, '/');
+      eq(e.toString(), e2.toString())
+    });
+  });
+
+
 });
 
 describe('ExpresionFor', function() {
@@ -178,6 +198,20 @@ describe('ExpresionFor', function() {
       );
 
       eq(line.toString(), 'y = mx + b / 2');
+    });
+  });
+
+  describe('#clone', function() {
+    it('returns a deep copy of the expression tree', function() {
+      var e = ExpressionFor('y', Expression(2, '*', 'm'));
+      var e2 = e.clone();
+
+      ok(e2 !== e);
+      ok(e.expression !== e2.expression);
+      eq(e2.expression.left, 2);
+      eq(e2.expression.right, 'm');
+      eq(e2.expression.operator.type, '*');
+      eq(e.toString(), e2.toString())
     });
   });
 
