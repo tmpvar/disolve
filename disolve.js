@@ -208,9 +208,7 @@ Operator.prototype.perform = function(a, b) {
 
 Operator.prototype.toString = function() {
   var type = ' ' + this.type + ' ';
-  if (this.type === '*') {
-    type = '';
-  } else if (this.type === '^') {
+  if (this.type === '^') {
     type = this.type;
   }
   return type;

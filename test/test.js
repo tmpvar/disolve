@@ -16,9 +16,9 @@ var Operator = disolve.Operator;
 
 describe('Expression', function() {
   describe('debug', function() {
-    it('prints "2x"', function() {
+    it('prints "2 * x"', function() {
       var e = Expression(2, '*', 'x');
-      eq(e.toString(), '2x');
+      eq(e.toString(), '2 * x');
     });
 
     it('prints "2 + x / y"', function() {
@@ -31,28 +31,33 @@ describe('Expression', function() {
       eq(e.toString(), 'x / y + 2');
     });
 
-    it('prints "2x / 2 / y"', function() {
+    it('prints "2 * x / 2 / y"', function() {
       var e = Expression(
         Expression(2, '*', 'x'), '/', Expression(2, '/', 'y')
       );
 
-      eq(e.toString(), '2x / 2 / y');
+      eq(e.toString(), '2 * x / 2 / y');
     });
 
-    it('prints "2x / 3y"', function() {
+    it('prints "2 * x / 3 * y"', function() {
       var e = Expression(
         Expression(2, '*', 'x'), '/', Expression(3, '*', 'y')
       );
 
-      eq(e.toString(), '2x / 3y');
+      eq(e.toString(), '2 * x / 3 * y');
     });
 
-    it('prints "2x / (3 + y)"', function() {
+    it('prints "2 * x / (3 + y)"', function() {
       var e = Expression(
         Expression(2, '*', 'x'), '/', ExpressionGroup(3, '+', 'y')
       );
 
-      eq(e.toString(), '2x / (3 + y)');
+      eq(e.toString(), '2 * x / (3 + y)');
+    });
+
+    it('allows multicharacter variables', function() {
+      var e = Expression('dx1', '*', 'dx2');
+      eq(e.toString(), 'dx1 * dx2')
     });
   });
 
@@ -182,20 +187,20 @@ describe('ExpressionGroup', function() {
 
 describe('ExpresionFor', function() {
   describe('debug', function() {
-    it('prints "y = mx + b"', function() {
+    it('prints "y = m * x + b"', function() {
       var line = ExpressionFor('y',
         Expression(Expression('m', '*', 'x'), '+', 'b')
       );
 
-      eq(line.toString(), 'y = mx + b');
+      eq(line.toString(), 'y = m * x + b');
     });
 
-    it('prints "y = mx + b / 2"', function() {
+    it('prints "y = m * x + b / 2"', function() {
       var line = ExpressionFor('y',
         Expression(Expression('m', '*', 'x'), '+', Expression('b', '/', 2))
       );
 
-      eq(line.toString(), 'y = mx + b / 2');
+      eq(line.toString(), 'y = m * x + b / 2');
     });
   });
 
@@ -296,7 +301,7 @@ describe('partial evaluation', function() {
       a: 2
     };
 
-    eq(e.evaluate({ a: 2 }).toString(), '(2b) / (2 - b)');
+    eq(e.evaluate({ a: 2 }).toString(), '(2 * b) / (2 - b)');
   });
 
 
