@@ -6,95 +6,123 @@ var string = function(a) {
   return Object.prototype.toString.call(a) === '[object String]';
 };
 
+var fn = function(a) {
+  return typeof a === 'function';
+};
+
 var number = function(a) {
   return Object.prototype.toString.call(a) === '[object Number]';
 };
 
-function Expression(left, operator, right) {
+var array = function(a) {
+  return Object.prototype.toString.call(a) === '[object Array]';
+};
+
+function Expression(symbols) {
+  var _symbols = symbols;
+
+  if (!array(symbols)) {
+    _symbols = [];
+    Array.prototype.push.apply(_symbols, arguments);
+  }
 
   if (!(this instanceof Expression)) {
-    return new Expression(left, operator, right);
+    return new Expression(_symbols);
   }
 
-  if (left instanceof Expression) {
-    left.parent = this;
+  for (var i = 0; i<_symbols.length; i++) {
+    var symbol = _symbols[i];
+
+    if (Expression.isExpression(symbol)) {
+      symbol.parent = this;
+    } else if (string(symbol) && Operator.isOperator(symbol)) {
+      _symbols[i] = new Operator(symbol);
+    }
   }
 
-  if (right instanceof Expression) {
-    right.parent = this;
-  }
-
-  this.left = left;
-  this.right = right;
-  this.operator = new Operator(operator);
+  this.symbols = _symbols;
 }
 
 Expression.isExpression = function(a) {
   return a && a.name && a.name === 'expression';
 }
 
-
 Expression.prototype.constructor = Expression;
 Expression.prototype.parent = null
 Expression.prototype.name = 'expression';
 
 Expression.prototype.toString = function(addParens) {
-  return [
-    this.left.toString(),
-    this.operator.toString(),
-    this.right.toString(),
-  ].join('');
+  return this.symbols.join('');
 };
 
 Expression.prototype.evaluate = function(knowns) {
-  var right = this.right;
-  var left = this.left;
+  var symbols = this.symbols, l = symbols.length, result;
 
-  if (knowns) {
-    if (defined(knowns[this.right])) {
-      right = knowns[this.right];
+  var partials = [], prev;
+
+  var expression = new (this.constructor)();
+
+  for (var i = 1; i<l; i++) {
+    var current = symbols[i];
+    var prev = symbols[i-1];
+    var next = symbols[i+1]; // TODO: bounds
+
+    // TODO: operator precidence
+    if (Operator.isOperator(current)) {
+
+      if (prev && fn(prev.evaluate)) {
+        prev = prev.evaluate(knowns);
+      } else if (string(prev) && defined(knowns[prev])) {
+        prev = knowns[prev];
+      }
+
+      if (next && fn(next.evaluate)) {
+        next = next.evaluate(knowns);
+      } else if (string(next) && defined(knowns[next])) {
+        next = knowns[next];
+      }
+
+      if (string(prev) || Expression.isExpression(prev) ||
+          string(next) || Expression.isExpression(next)
+         )
+      {
+        expression.symbols.push(prev);
+        expression.symbols.push(current.clone());
+        expression.symbols.push(next);
+      } else {
+        result = current.perform(prev, next);
+      }
     }
-
-    if (defined(knowns[this.left])) {
-      left = knowns[this.left];
-    }
   }
 
-  if (Expression.isExpression(right)) {
-    right = right.evaluate(knowns);
-  }
-
-  if (Expression.isExpression(left)) {
-    left = left.evaluate(knowns);
-  }
-
-  if (this.unknowns(knowns).length) {
-    return new (this.constructor)(left, this.operator.type, right);
-  } else {
-    return this.operator.perform(left, right);
-  }
+  return expression.symbols.length ? expression : result;
 };
 
 Expression.prototype.clone = function() {
-  var left = (Expression.isExpression(this.left)) ? this.left.clone() : this.left;
-  var right = (Expression.isExpression(this.right)) ? this.right.clone() : this.right;
-  var op = this.operator.type;
+  var clone = [], symbols = this.symbols, l = symbols.length;
 
-  return new (this.constructor)(left, op, right);
+  for (var i = 0; i<l; i++) {
+    if (fn(symbols[i].clone)) {
+      clone.push(symbols[i].clone());
+    } else {
+      clone.push(symbols[i]);
+    }
+  }
+  return new (this.constructor)(clone);
 };
 
 Expression.prototype.unknowns = function(knowns, unknowns) {
   unknowns = unknowns || [];
-  if (string(this.left) && !defined(knowns[this.left])) {
-    unknowns.push(this.left);
-  } else if (Expression.isExpression(this.left)) {
-    this.left.unknowns(knowns, unknowns);
-  }
 
-  if (string(this.right) && !defined(knowns[this.right])) {
-    unknowns.push(this.right);
-  } else if (Expression.isExpression(this.right)) {
-    this.right.unknowns(knowns, unknowns);
+  var symbols = this.symbols, l = symbols.length;
+
+  for (var i = 0; i<l; i++) {
+    var symbol = symbols[i];
+    if (Expression.isExpression(symbol)) {
+      symbol.unknowns(knowns, unknowns)
+    } else if (string(symbol) && !Operator.isOperator(symbol) && !defined(knowns[symbol])) {
+      unknowns.push(symbol);
+    }
   }
 
   return unknowns;
@@ -123,16 +151,23 @@ ExpressionFor.prototype.toString = function() {
   return this.variable + ' = ' + this.expression.toString();
 };
 
-function ExpressionGroup(left, op, right) {
-  if (!(this instanceof ExpressionGroup)) {
-    return new ExpressionGroup(left, op, right);
+function ExpressionGroup(symbols) {
+  var _symbols = symbols;
+
+  if (!array(symbols)) {
+    _symbols = [];
+    Array.prototype.push.apply(_symbols, arguments);
   }
-  Expression.call(this, left, op, right);
+
+  if (!(this instanceof ExpressionGroup)) {
+    return new ExpressionGroup(_symbols);
+  }
+
+  Expression.call(this, _symbols);
 }
 
 ExpressionGroup.prototype = Object.create(Expression.prototype);
 ExpressionGroup.prototype.constructor = ExpressionGroup;
-
 ExpressionGroup.prototype.toString = function() {
   return '(' + Expression.prototype.toString.call(this) + ')';
 };
@@ -177,6 +212,15 @@ function Operator(type) {
 }
 
 Operator.prototype.name = 'operator';
+Operator.prototype.constructor = Operator;
+
+Operator.isOperator = function(a) {
+  return a instanceof Operator || (defined(Operator.prototype[a]) && a.length === 1);
+};
+
+Operator.prototype.clone = function() {
+  return new (this.constructor)(this.type);
+};
 
 Operator.prototype['+'] = function(a, b) {
   return a+b;
@@ -198,20 +242,20 @@ Operator.prototype['^'] = function(a, b) {
   return Math.pow(a, b);
 };
 
-Operator.prototype.needsParens = function() {
-  return (this.type !== '*' && this.type !== '^');
-}
+Operator.prototype['%'] = function(a, b) {
+  return a % b;
+};
 
 Operator.prototype.perform = function(a, b) {
   return this[this.type](a, b);
 };
 
 Operator.prototype.toString = function() {
-  var type = ' ' + this.type + ' ';
   if (this.type === '^') {
-    type = this.type;
+    return this.type;
   }
-  return type;
+
+  return ' ' + this.type + ' ';
 };
 
 var disolve = function(val) {

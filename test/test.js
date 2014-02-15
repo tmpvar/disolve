@@ -7,12 +7,27 @@ if (typeof require !== "undefined") {
 
 var ok = function(a, msg) { if (!a) throw new Error(msg || "not ok"); };
 var eq = function(a, b) { if (a!==b) throw new Error(a + " !== " + b); }
+var neq = function(a, b) { if (a===b) throw new Error(a + " === " + b); }
 
 var Expression = disolve.Expression;
 var ExpressionFor = disolve.ExpressionFor;
 var ExpressionFunction = disolve.ExpressionFunction;
 var ExpressionGroup = disolve.ExpressionGroup;
 var Operator = disolve.Operator;
+
+
+describe('Operator', function() {
+  describe('#isOperator', function() {
+    it('handles operator instances', function() {
+      ok(Operator.isOperator(new Operator('+')));
+    });
+
+    it('handles operator strings', function() {
+      ok(Operator.isOperator('+'));
+      ok(!Operator.isOperator('toString'));
+    });
+  });
+});
 
 describe('Expression', function() {
   describe('debug', function() {
@@ -22,7 +37,7 @@ describe('Expression', function() {
     });
 
     it('prints "2 + x / y"', function() {
-      var e = Expression(2, '+', Expression('x', '/', 'y'));
+      var e = Expression(2, '+', 'x', '/', 'y');
       eq(e.toString(), '2 + x / y');
     });
 
@@ -48,10 +63,7 @@ describe('Expression', function() {
     });
 
     it('prints "2 * x / (3 + y)"', function() {
-      var e = Expression(
-        Expression(2, '*', 'x'), '/', ExpressionGroup(3, '+', 'y')
-      );
-
+      var e = Expression(2, '*', 'x', '/', ExpressionGroup(3, '+', 'y'));
       eq(e.toString(), '2 * x / (3 + y)');
     });
 
@@ -170,16 +182,10 @@ describe('ExpressionGroup', function() {
       var e = Expression(ExpressionGroup('y', '+', 'm'), '/', ExpressionGroup('y', '/', 2));
       var e2 = e.clone();
 
-      ok(e2 !== e);
-      ok(e.right !== e2.right);
-      ok(e.left !== e2.left);
-      eq(e2.left.left, 'y');
-      eq(e2.left.right, 'm');
-      eq(e2.right.left, 'y');
-      eq(e2.right.right, 2);
-      eq(e2.operator.type, '/');
-      eq(e2.left.operator.type, '+');
-      eq(e2.right.operator.type, '/');
+      neq(e2, e);
+      neq(e2.symbols[0], e.symbols[0]);
+      neq(e2.symbols[1], e.symbols[1]);
+      eq(e.toString(), '(y + m) / (y / 2)');
       eq(e.toString(), e2.toString())
     });
   });
@@ -209,12 +215,9 @@ describe('ExpresionFor', function() {
       var e = ExpressionFor('y', Expression(2, '*', 'm'));
       var e2 = e.clone();
 
-      ok(e2 !== e);
-      ok(e.expression !== e2.expression);
-      eq(e2.expression.left, 2);
-      eq(e2.expression.right, 'm');
-      eq(e2.expression.operator.type, '*');
-      eq(e.toString(), e2.toString())
+      neq(e2, e);
+      eq(e2.toString(), e.toString());
+      neq(e2.expression, e.expression);
     });
   });
 
@@ -280,6 +283,7 @@ describe('partial evaluation', function() {
     };
 
     var e2 = e.evaluate({ a: 2 });
+
     eq(e2.toString(), '2 + (2 / b)');
     eq(e2.evaluate({ b: 4 }), 2.5);
   });
