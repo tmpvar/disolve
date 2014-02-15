@@ -298,4 +298,18 @@ describe('partial evaluation', function() {
 
     eq(e.evaluate({ a: 2 }).toString(), '(2b) / (2 - b)');
   });
+
+
+  it('partial resolves y=mx+b', function() {
+    var line = ExpressionFor('y',
+      Expression(Expression('m', '*', 'x'), '+', 'b')
+    );
+
+    var yexpression = line.evaluate({ m: 1, b: 0 });
+
+    eq(yexpression.evaluate({ x : 0 }), 0);
+    eq(yexpression.evaluate({ x : 1 }), 1);
+    eq(yexpression.evaluate({ x : 50 }), 50);
+  });
+
 });

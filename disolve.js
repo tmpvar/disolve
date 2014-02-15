@@ -1,4 +1,3 @@
-var microdom = require('microdom');
 var defined = function(a) {
   return typeof a !== 'undefined';
 };
