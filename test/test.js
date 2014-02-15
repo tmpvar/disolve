@@ -111,6 +111,17 @@ describe('Expression', function() {
       eq(e.evaluate(), 49);
     });
   });
+
+  describe('order of operations', function() {
+    it('divides before adding', function() {
+      var e = Expression(2, '+', 4, '/', 4);
+      eq(e.evaluate(), 3);
+    });
+    it('multiplies before adding', function() {
+      var e = Expression(2, '+', 4, '*', 4);
+      eq(e.evaluate(), 18);
+    });
+  });
 });
 
 describe('ExpressionFunction', function() {
