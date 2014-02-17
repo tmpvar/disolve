@@ -70,6 +70,7 @@ describe('Expression', function() {
     it('allows multicharacter variables', function() {
       var e = Expression('dx1', '*', 'dx2');
       eq(e.toString(), 'dx1 * dx2')
+      eq(e.evaluate({ dx1 : 2, dx2: 3 }), 6);
     });
   });
 
@@ -113,13 +114,18 @@ describe('Expression', function() {
   });
 
   describe('order of operations', function() {
-    it('divides before adding', function() {
+    it('divides before adding "2 + 4 / 4"', function() {
       var e = Expression(2, '+', 4, '/', 4);
       eq(e.evaluate(), 3);
     });
     it('multiplies before adding', function() {
       var e = Expression(2, '+', 4, '*', 4);
       eq(e.evaluate(), 18);
+    });
+
+    it('multiplies before adding', function() {
+      var e = Expression(2, '+', 4, '*', 4, '+', 5);
+      eq(e.evaluate(), 23);
     });
   });
 });
@@ -331,5 +337,4 @@ describe('partial evaluation', function() {
     eq(yexpression.evaluate({ x : 1 }), 1);
     eq(yexpression.evaluate({ x : 50 }), 50);
   });
-
 });

@@ -56,46 +56,50 @@ Expression.prototype.toString = function(addParens) {
 };
 
 Expression.prototype.evaluate = function(knowns) {
-  var symbols = this.symbols, l = symbols.length, result;
+  knowns = knowns || {};
 
-  var partials = [], prev;
+  var s = this.symbols.concat();
+  for (var phase = 0; phase <= 1; phase++) {
+    for (var i=0; i<s.length; i++) {
+      if (Operator.isOperator(s[i]) && phase === Operator.ops[s[i].type]) {
+        var evaluate = true;
+        var p = s[i-1];
+        var c = s[i];
+        var n = s[i+1];
 
-  var expression = new (this.constructor)();
+        if (defined(knowns[p])) {
+          p = knowns[p];
+        } else if (Expression.isExpression(p)) {
+          p = p.evaluate(knowns);
+        }
 
-  for (var i = 1; i<l; i++) {
-    var current = symbols[i];
-    var prev = symbols[i-1];
-    var next = symbols[i+1]; // TODO: bounds
+        if (Expression.isExpression(p) || string(p)) {
+          evaluate = false;
+        }
 
-    // TODO: operator precidence
-    if (Operator.isOperator(current)) {
+        if (defined(knowns[n])) {
+          n = knowns[n];
+        } else if (Expression.isExpression(n)) {
+          n = n.evaluate(knowns);
+        }
 
-      if (prev && fn(prev.evaluate)) {
-        prev = prev.evaluate(knowns);
-      } else if (string(prev) && defined(knowns[prev])) {
-        prev = knowns[prev];
-      }
+        if (Expression.isExpression(n) || string(n)) {
+          evaluate = false;
+        }
 
-      if (next && fn(next.evaluate)) {
-        next = next.evaluate(knowns);
-      } else if (string(next) && defined(knowns[next])) {
-        next = knowns[next];
-      }
-
-      if (string(prev) || Expression.isExpression(prev) ||
-          string(next) || Expression.isExpression(next)
-         )
-      {
-        expression.symbols.push(prev);
-        expression.symbols.push(current.clone());
-        expression.symbols.push(next);
-      } else {
-        result = current.perform(prev, next);
+        if (evaluate) {
+          s[i-1] = c.perform(p, n);
+          s.splice(i,2);
+          i -= 2;
+        } else {
+          s[i-1] = p;
+          s[i+1] = n;
+        }
       }
     }
   }
 
-  return expression.symbols.length ? expression : result;
+  return (s.length > 1) ? new (this.constructor)(s) : s[0];
 };
 
 Expression.prototype.clone = function() {
@@ -216,6 +220,20 @@ Operator.prototype.constructor = Operator;
 
 Operator.isOperator = function(a) {
   return a instanceof Operator || (defined(Operator.prototype[a]) && a.length === 1);
+};
+
+Operator.ops = {
+  '^' : 0,
+  '*' : 0,
+  '/' : 0,
+  '%' : 0,
+  '+' : 1,
+  '-' : 1
+};
+
+Operator.prototype.sortAgainst = function(op) {
+  var ops = Operator.ops;
+  return ops[this.type] >= ops[op.type];
 };
 
 Operator.prototype.clone = function() {
